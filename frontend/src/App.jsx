@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+ï»¿import { useEffect, useRef, useState } from "react";
 import { healthCheck, indexRepo, queryRepo } from "./api";
 import "./App.css";
 
 export default function App() {
   const [repoUrl, setRepoUrl] = useState("");
-  const [repo, setRepo] = useState(null); // { name, chunkCount }
+  const [repo, setRepo] = useState(null);
   const [indexing, setIndexing] = useState(false);
   const [indexError, setIndexError] = useState("");
 
   const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState([]); // { role, text, sources? }
+  const [messages, setMessages] = useState([]);
   const [asking, setAsking] = useState(false);
   const chatEndRef = useRef(null);
 
@@ -55,7 +55,7 @@ export default function App() {
     <div className="app">
       <header>
         <h1>Codebase RAG Assistant</h1>
-        <p className="tagline">Paste a GitHub repo, then ask questions — answers cite real files and lines.</p>
+        <p className="tagline">Paste a GitHub repo, then ask questions -- answers cite real files and lines.</p>
       </header>
 
       <form className="index-bar" onSubmit={handleIndex}>
@@ -72,11 +72,11 @@ export default function App() {
         </button>
       </form>
 
-      {indexing && <p className="status">Cloning, chunking and embedding — this can take a minute...</p>}
+      {indexing && <p className="status">Cloning, chunking and embedding -- this can take a minute...</p>}
       {indexError && <p className="status error">{indexError}</p>}
       {repo && (
         <p className="status ok">
-          Indexed <strong>{repo.name}</strong> - {repo.chunkCount} chunks. Ask away.
+          Indexed <strong>{repo.name}</strong> -- {repo.chunkCount} chunks. Ask away.
         </p>
       )}
 

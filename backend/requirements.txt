@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+psycopg2-binary
+fastembed
+gitpython
+google-genai
+pgvector
+python-dotenv
+langchain-text-splitters

@@ -1,0 +1,163 @@
+.app {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 20px 120px;
+}
+
+header h1 {
+  font-size: 1.7rem;
+}
+
+.tagline {
+  color: var(--muted);
+  margin: 4px 0 24px;
+}
+
+.index-bar,
+.ask-bar {
+  display: flex;
+  gap: 10px;
+}
+
+.index-bar input,
+.ask-bar input {
+  flex: 1;
+  padding: 12px 14px;
+  border: 1px solid var(--panel-2);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.index-bar input:focus,
+.ask-bar input:focus {
+  outline: 2px solid var(--accent);
+  border-color: transparent;
+}
+
+button {
+  padding: 12px 22px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.status {
+  margin: 14px 2px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.status.ok {
+  color: var(--ok);
+}
+
+.status.error {
+  color: var(--err);
+}
+
+.chat {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.msg {
+  display: flex;
+}
+
+.msg.user {
+  justify-content: flex-end;
+}
+
+.bubble {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.msg.user .bubble {
+  background: var(--accent-dark);
+}
+
+.msg-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.bubble.thinking {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.sources {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--panel-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.sources-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-right: 4px;
+}
+
+.chip {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.78rem;
+  background: var(--panel-2);
+  color: var(--accent);
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.ask-bar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 860px;
+  padding: 16px 20px 22px;
+  background: linear-gradient(transparent, var(--bg) 30%);
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

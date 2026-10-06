@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://codebase-rag-assistant-backend.onrender.com";
 
 async function post(path, body) {
   const res = await fetch(`${API_BASE}${path}`, {

@@ -1,15 +1,23 @@
 """FastAPI app: /health, /index, /query, /repos."""
+import logging
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from .config import CORS_ORIGINS
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="Codebase RAG Assistant", version="1.0.0")
+
+logger.info("CORS allowed origins: %s", CORS_ORIGINS)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

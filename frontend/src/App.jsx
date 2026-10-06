@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { indexRepo, queryRepo } from "./api";
+import { useEffect, useRef, useState } from "react";
+import { healthCheck, indexRepo, queryRepo } from "./api";
 import "./App.css";
 
 export default function App() {
@@ -12,6 +12,9 @@ export default function App() {
   const [messages, setMessages] = useState([]); // { role, text, sources? }
   const [asking, setAsking] = useState(false);
   const chatEndRef = useRef(null);
+
+  // Pre-warm the Render backend on page load to reduce cold-start lag
+  useEffect(() => { healthCheck(); }, []);
 
   async function handleIndex(e) {
     e.preventDefault();
@@ -52,7 +55,7 @@ export default function App() {
     <div className="app">
       <header>
         <h1>Codebase RAG Assistant</h1>
-        <p className="tagline">Paste a GitHub repo, then ask questions — answers cite real files and lines.</p>
+        <p className="tagline">Paste a GitHub repo, then ask questions � answers cite real files and lines.</p>
       </header>
 
       <form className="index-bar" onSubmit={handleIndex}>
@@ -69,11 +72,11 @@ export default function App() {
         </button>
       </form>
 
-      {indexing && <p className="status">Cloning, chunking and embedding — this can take a minute…</p>}
+      {indexing && <p className="status">Cloning, chunking and embedding � this can take a minute...</p>}
       {indexError && <p className="status error">{indexError}</p>}
       {repo && (
         <p className="status ok">
-          Indexed <strong>{repo.name}</strong> — {repo.chunkCount} chunks. Ask away.
+          Indexed <strong>{repo.name}</strong> - {repo.chunkCount} chunks. Ask away.
         </p>
       )}
 
@@ -97,7 +100,7 @@ export default function App() {
         ))}
         {asking && (
           <div className="msg assistant">
-            <div className="bubble thinking">Thinking…</div>
+            <div className="bubble thinking">Thinking...</div>
           </div>
         )}
         <div ref={chatEndRef} />
@@ -105,7 +108,7 @@ export default function App() {
 
       <form className="ask-bar" onSubmit={handleAsk}>
         <input
-          placeholder={repo ? `Ask about ${repo.name}…` : "Index a repo first"}
+          placeholder={repo ? `Ask about ${repo.name}...` : "Index a repo first"}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           disabled={!repo || asking}

@@ -1,7 +1,7 @@
-"""FastAPI app: /health, /index, /query, /repos."""
+﻿"""FastAPI app: /health, /index, /index/status/{job_id}, /query, /repos."""
 import logging
-
-from fastapi import FastAPI, HTTPException
+import uuid
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -22,6 +22,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── In-memory job store ─────────────────────────────────────────────────────
+# { job_id: { status, repo, chunk_count?, error? } }
+# Resets on restart — acceptable for a free-tier demo.
+_jobs: dict[str, dict] = {}
+
 
 class IndexRequest(BaseModel):
     github_url: str
@@ -32,37 +37,73 @@ class QueryRequest(BaseModel):
     repo: str
 
 
+# ── Background worker ────────────────────────────────────────────────────────
+
+def _do_index(job_id: str, github_url: str) -> None:
+    from .embed import embed_texts
+    from .ingest import ingest_repo, repo_name_from_url
+    from .store import delete_repo, init_db, insert_chunks
+
+    repo = repo_name_from_url(github_url)
+    logger.info("[job %s] starting index for %s", job_id, github_url)
+    try:
+        _jobs[job_id]["status"] = "cloning"
+        chunks = ingest_repo(github_url)
+        if not chunks:
+            _jobs[job_id] = {"status": "failed", "error": "No supported code files found in this repo."}
+            return
+
+        _jobs[job_id]["status"] = "embedding"
+        _jobs[job_id]["chunk_count"] = len(chunks)
+        embeddings = embed_texts([c["content"] for c in chunks])
+
+        _jobs[job_id]["status"] = "storing"
+        init_db()
+        delete_repo(repo)
+        insert_chunks(repo, chunks, embeddings)
+
+        _jobs[job_id] = {"status": "done", "repo": repo, "chunk_count": len(chunks)}
+        logger.info("[job %s] done — %d chunks", job_id, len(chunks))
+    except Exception as e:
+        logger.exception("[job %s] failed: %s", job_id, e)
+        _jobs[job_id] = {"status": "failed", "error": str(e)}
+
+
+# ── Routes ────────────────────────────────────────────────────────────────────
+
 @app.get("/health")
 def health():
     return {"ok": True}
 
 
 @app.post("/index")
-def index_repo(req: IndexRequest):
-    # Imports deferred so /health and startup don't pay the model/DB cost.
-    from .embed import embed_texts
-    from .ingest import ingest_repo, repo_name_from_url
-    from .store import delete_repo, init_db, insert_chunks
-
-    repo = repo_name_from_url(req.github_url)
+def index_repo(req: IndexRequest, background_tasks: BackgroundTasks):
+    """Start indexing in the background and return a job_id immediately."""
+    from .ingest import repo_name_from_url
     try:
-        chunks = ingest_repo(req.github_url)
+        repo = repo_name_from_url(req.github_url)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to clone/ingest repo: {e}")
-    if not chunks:
-        raise HTTPException(status_code=400, detail="No supported code files found in this repo.")
+        raise HTTPException(status_code=400, detail=f"Invalid GitHub URL: {e}")
 
-    embeddings = embed_texts([c["content"] for c in chunks])
-    init_db()
-    delete_repo(repo)
-    insert_chunks(repo, chunks, embeddings)
-    return {"repo": repo, "chunk_count": len(chunks)}
+    job_id = str(uuid.uuid4())
+    _jobs[job_id] = {"status": "processing", "repo": repo}
+    background_tasks.add_task(_do_index, job_id, req.github_url)
+    logger.info("[job %s] queued for repo %s", job_id, repo)
+    return {"job_id": job_id, "repo": repo, "status": "processing"}
+
+
+@app.get("/index/status/{job_id}")
+def index_status(job_id: str):
+    """Poll this endpoint to check indexing progress."""
+    job = _jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found. The backend may have restarted — please re-index.")
+    return job
 
 
 @app.post("/query")
 def query(req: QueryRequest):
     from .rag import answer_question
-
     try:
         return answer_question(req.question, req.repo)
     except RuntimeError as e:
@@ -72,7 +113,6 @@ def query(req: QueryRequest):
 @app.get("/repos")
 def repos():
     from .store import list_repos
-
     try:
         return {"repos": list_repos()}
     except Exception:

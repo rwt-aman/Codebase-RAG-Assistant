@@ -6,6 +6,7 @@ export default function App() {
   const [repoUrl, setRepoUrl] = useState("");
   const [repo, setRepo] = useState(null);
   const [indexing, setIndexing] = useState(false);
+  const [indexStatus, setIndexStatus] = useState(""); // live progress message
   const [indexError, setIndexError] = useState("");
 
   const [question, setQuestion] = useState("");
@@ -13,7 +14,7 @@ export default function App() {
   const [asking, setAsking] = useState(false);
   const chatEndRef = useRef(null);
 
-  // Pre-warm the Render backend on page load to reduce cold-start lag
+  // Pre-warm the Render backend on page load to cut cold-start lag
   useEffect(() => { healthCheck(); }, []);
 
   async function handleIndex(e) {
@@ -21,13 +22,16 @@ export default function App() {
     if (!repoUrl.trim() || indexing) return;
     setIndexing(true);
     setIndexError("");
+    setIndexStatus("Sending request...");
     setRepo(null);
     try {
-      const data = await indexRepo(repoUrl.trim());
+      const data = await indexRepo(repoUrl.trim(), (msg) => setIndexStatus(msg));
       setRepo({ name: data.repo, chunkCount: data.chunk_count });
       setMessages([]);
+      setIndexStatus("");
     } catch (err) {
       setIndexError(err.message);
+      setIndexStatus("");
     } finally {
       setIndexing(false);
     }
@@ -42,9 +46,15 @@ export default function App() {
     setAsking(true);
     try {
       const data = await queryRepo(q, repo.name);
-      setMessages((m) => [...m, { role: "assistant", text: data.answer, sources: data.sources }]);
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", text: data.answer, sources: data.sources },
+      ]);
     } catch (err) {
-      setMessages((m) => [...m, { role: "assistant", text: `Error: ${err.message}`, sources: [] }]);
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", text: `Error: ${err.message}`, sources: [] },
+      ]);
     } finally {
       setAsking(false);
       chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -55,7 +65,9 @@ export default function App() {
     <div className="app">
       <header>
         <h1>Codebase RAG Assistant</h1>
-        <p className="tagline">Paste a GitHub repo, then ask questions -- answers cite real files and lines.</p>
+        <p className="tagline">
+          Paste a GitHub repo, then ask questions -- answers cite real files and lines.
+        </p>
       </header>
 
       <form className="index-bar" onSubmit={handleIndex}>
@@ -72,9 +84,11 @@ export default function App() {
         </button>
       </form>
 
-      {indexing && <p className="status">Cloning, chunking and embedding -- this can take a minute...</p>}
+      {indexing && indexStatus && (
+        <p className="status">{indexStatus}</p>
+      )}
       {indexError && <p className="status error">{indexError}</p>}
-      {repo && (
+      {repo && !indexing && (
         <p className="status ok">
           Indexed <strong>{repo.name}</strong> -- {repo.chunkCount} chunks. Ask away.
         </p>
@@ -89,7 +103,11 @@ export default function App() {
                 <div className="sources">
                   <span className="sources-label">Sources</span>
                   {m.sources.map((s, j) => (
-                    <span key={j} className="chip" title={`cosine distance ${s.distance}`}>
+                    <span
+                      key={j}
+                      className="chip"
+                      title={`cosine distance ${s.distance}`}
+                    >
                       {s.file_path}:{s.start_line}-{s.end_line}
                     </span>
                   ))}

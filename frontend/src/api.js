@@ -2,8 +2,8 @@
   import.meta.env.VITE_API_BASE ||
   "https://codebase-rag-assistant-backend.onrender.com";
 
-/** Generic POST with a per-request timeout. */
-async function post(path, body, timeoutMs = 30_000) {
+/** Generic POST with a per-request timeout and one auto-retry on cold-start. */
+async function post(path, body, timeoutMs = 30_000, attempt = 1) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -16,9 +16,13 @@ async function post(path, body, timeoutMs = 30_000) {
       signal: controller.signal,
     });
   } catch (err) {
+    if (err.name === "AbortError" && attempt === 1) {
+      // Backend was cold-starting. It should be warm now -- retry once.
+      return post(path, body, 60_000, 2);
+    }
     if (err.name === "AbortError") {
       throw new Error(
-        "Could not reach the backend after 30s. It may still be cold-starting -- try again."
+        "Backend is taking too long to respond. Please try again in a moment."
       );
     }
     throw new Error(
@@ -51,7 +55,7 @@ async function pollIndexStatus(jobId, onProgress, maxWaitMs = 600_000) {
       const res = await fetch(`${API_BASE}/index/status/${jobId}`);
       data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || `Status check failed (${res.status})`);
-    } catch (err) {
+    } catch {
       // Transient network blip -- keep polling
       continue;
     }
@@ -62,10 +66,9 @@ async function pollIndexStatus(jobId, onProgress, maxWaitMs = 600_000) {
     if (data.status === "failed") {
       throw new Error(data.error || "Indexing failed on the server.");
     }
-    // Still in progress -- notify caller with human-readable label
     if (onProgress) {
       const label = STEP_LABELS[data.status] || `Processing (${data.status})...`;
-      const extra = data.chunk_count ? ` ${data.chunk_count} chunks found so far.` : "";
+      const extra = data.chunk_count ? ` ${data.chunk_count} chunks found.` : "";
       onProgress(`${label}${extra}`);
     }
   }
@@ -77,16 +80,13 @@ async function pollIndexStatus(jobId, onProgress, maxWaitMs = 600_000) {
 export const healthCheck = () => fetch(`${API_BASE}/health`).catch(() => null);
 
 /**
- * Start indexing a repo. Returns a Promise that resolves when indexing is
- * complete. Pass onProgress(msg) to receive status updates while polling.
+ * Start indexing a repo. Auto-retries once if backend was cold-starting.
+ * onProgress(msg) receives live status updates while polling.
  */
 export async function indexRepo(githubUrl, onProgress) {
-  // 1. Kick off the job (returns immediately)
-  const { job_id, repo } = await post("/index", { github_url: githubUrl }, 30_000);
-
-  if (onProgress) onProgress("Job queued -- connecting to backend...");
-
-  // 2. Poll until done
+  if (onProgress) onProgress("Connecting to backend (may take ~30s on first load)...");
+  const { job_id } = await post("/index", { github_url: githubUrl }, 30_000);
+  if (onProgress) onProgress("Job queued -- processing started...");
   return await pollIndexStatus(job_id, onProgress);
 }
 

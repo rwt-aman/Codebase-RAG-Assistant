@@ -1,5 +1,7 @@
 # 🔍 Codebase RAG Assistant
 
+🚀 **Live Demo:** [codebase-ai-assistant.netlify.app](https://codebase-ai-assistant.netlify.app/)
+
 > Paste a GitHub repo URL, let it index the code, then ask questions in plain English — every answer is grounded in the actual source and **cites file paths and line numbers** you can verify.
 
 The same retrieval-augmented generation pattern that powers tools like Cursor and Sourcegraph Cody, stripped down to its shippable core — built as a learning project to deeply understand **RAG pipelines, vector embeddings, and LLM-grounded code search**.
